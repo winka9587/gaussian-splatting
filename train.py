@@ -22,6 +22,11 @@ from tqdm import tqdm
 from utils.image_utils import psnr
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
+
+import resource
+print(resource.getrlimit(resource.RLIMIT_NOFILE)) # Shows current soft & hard limits, e.g., [512, 1048576]
+resource.setrlimit(resource.RLIMIT_NOFILE, [8192, 1048576]) # Sets new soft limit and keeps the hard limit as-is
+
 try:
     from torch.utils.tensorboard import SummaryWriter
     TENSORBOARD_FOUND = True
