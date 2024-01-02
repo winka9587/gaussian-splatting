@@ -7,3 +7,6 @@
 [submodule "SIBR_viewers"]
 	path = SIBR_viewers
 	url = https://gitlab.inria.fr/sibr/sibr_core.git
+[submodule "submodules/vision_tool"]
+	path = submodules/vision_tool
+	url = git@github.com:winka9587/vision_tool.git

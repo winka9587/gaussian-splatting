@@ -14,7 +14,8 @@ import sys
 from PIL import Image
 from typing import NamedTuple
 from scene.colmap_loader import read_extrinsics_text, read_intrinsics_text, qvec2rotmat, \
-    read_extrinsics_binary, read_intrinsics_binary, read_points3D_binary, read_points3D_text
+    read_extrinsics_binary, read_intrinsics_binary, read_points3D_binary, read_points3D_text, \
+    write_intrinsics_binary, write_extrinsics_binary, write_points3D_binary
 from utils.graphics_utils import getWorld2View2, focal2fov, fov2focal
 import numpy as np
 import json
@@ -42,6 +43,10 @@ class SceneInfo(NamedTuple):
     nerf_normalization: dict
     ply_path: str
 
+"""
+    translate: np.array 均值点取反, 便于之后计算世界坐标系的均值化后的坐标
+    radius: float 相机中心点到最远的相机中心点的距离 * 1.1
+"""
 def getNerfppNorm(cam_info):
     def get_center_and_diag(cam_centers):
         cam_centers = np.hstack(cam_centers)
@@ -165,15 +170,15 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
             xyz, rgb, _ = read_points3D_text(txt_path)
         storePly(ply_path, xyz, rgb)
     try:
-        pcd = fetchPly(ply_path)
+        pcd = fetchPly(ply_path)  # 此处可以直接替换pcd, 只需要提供np.array的3个: positions(n,3) 'float32', colors(n, 3) 'float64' 0~1, normals(n,3) 'float32' 0,0,0, BasicPointCloud(points=positions, colors=colors, normals=normals)
     except:
         pcd = None
 
-    scene_info = SceneInfo(point_cloud=pcd,
-                           train_cameras=train_cam_infos,
-                           test_cameras=test_cam_infos,
-                           nerf_normalization=nerf_normalization,
-                           ply_path=ply_path)
+    scene_info = SceneInfo(point_cloud=pcd,  # 点云: xyzs, colors, normals
+                           train_cameras=train_cam_infos,  # cam_info
+                           test_cameras=test_cam_infos,  # []
+                           nerf_normalization=nerf_normalization,  # translate(centuralize), radius(max dist*1.1)
+                           ply_path=ply_path)  # path
     return scene_info
 
 def readCamerasFromTransforms(path, transformsfile, white_background, extension=".png"):

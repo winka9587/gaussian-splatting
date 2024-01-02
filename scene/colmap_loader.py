@@ -143,15 +143,51 @@ def read_points3D_binary(path_to_model_file):
             xyz = np.array(binary_point_line_properties[1:4])
             rgb = np.array(binary_point_line_properties[4:7])
             error = np.array(binary_point_line_properties[7])
+            # colmap的points3D中image_ids和point2D_idxs分别代表什么?
             track_length = read_next_bytes(
-                fid, num_bytes=8, format_char_sequence="Q")[0]
+                fid, num_bytes=8, format_char_sequence="Q")[0]  # "image_ids", 
             track_elems = read_next_bytes(
                 fid, num_bytes=8*track_length,
-                format_char_sequence="ii"*track_length)
+                format_char_sequence="ii"*track_length)  # "point2D_idxs"
             xyzs[p_id] = xyz
             rgbs[p_id] = rgb
             errors[p_id] = error
     return xyzs, rgbs, errors
+
+
+def write_points3D_binary(points3D, path_to_model_file):
+    """
+    see: src/colmap/scene/reconstruction.cc
+        void Reconstruction::ReadPoints3DBinary(const std::string& path)
+        void Reconstruction::WritePoints3DBinary(const std::string& path)
+    """
+    with open(path_to_model_file, "wb") as fid:
+        write_next_bytes(fid, len(points3D), "Q")
+        for _, pt in points3D.items():
+            write_next_bytes(fid, pt.id, "Q")
+            write_next_bytes(fid, pt.xyz.tolist(), "ddd")
+            write_next_bytes(fid, pt.rgb.tolist(), "BBB")
+            write_next_bytes(fid, pt.error, "d")
+            track_length = pt.image_ids.shape[0]
+            write_next_bytes(fid, track_length, "Q")
+            for image_id, point2D_id in zip(pt.image_ids, pt.point2D_idxs):
+                write_next_bytes(fid, [image_id, point2D_id], "ii")
+                
+
+def write_next_bytes(fid, data, format_char_sequence, endian_character="<"):
+    """pack and write to a binary file.
+    :param fid:
+    :param data: data to send, if multiple elements are sent at the same time,
+    they should be encapsuled either in a list or a tuple
+    :param format_char_sequence: List of {c, e, f, d, h, H, i, I, l, L, q, Q}.
+    should be the same length as the data list or tuple
+    :param endian_character: Any of {@, =, <, >, !}
+    """
+    if isinstance(data, (list, tuple)):
+        bytes = struct.pack(endian_character + format_char_sequence, *data)
+    else:
+        bytes = struct.pack(endian_character + format_char_sequence, data)
+    fid.write(bytes)
 
 def read_intrinsics_text(path):
     """
@@ -241,9 +277,26 @@ def read_intrinsics_binary(path_to_model_file):
     return cameras
 
 
+def write_intrinsics_binary(path_to_output_file, cameras):
+    """
+        'extrinsics' in this loader corresponds to 'camera'
+        write code from:
+        https://github.com/colmap/colmap/blob/8e7093d22b324ce71c70d368d852f0ad91743808/scripts/python/read_write_model.py#L190C13-L190C13
+    """
+    with open(path_to_output_file, "wb") as fid:
+        write_next_bytes(fid, len(cameras), "Q")
+        for _, cam in cameras.items():
+            model_id = CAMERA_MODEL_NAMES[cam.model].model_id
+            camera_properties = [cam.id, model_id, cam.width, cam.height]
+            write_next_bytes(fid, camera_properties, "iiQQ")
+            for p in cam.params:
+                write_next_bytes(fid, float(p), "d")
+    return cameras
+
+
 def read_extrinsics_text(path):
     """
-    Taken from https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
+    Taken from https://github.com/colmap/colmap/blob/dev/scripts/python/C.py
     """
     images = {}
     with open(path, "r") as fid:
@@ -268,6 +321,28 @@ def read_extrinsics_text(path):
                     camera_id=camera_id, name=image_name,
                     xys=xys, point3D_ids=point3D_ids)
     return images
+
+
+def write_extrinsics_binary(path_to_output_file, images):
+    """
+        'extrinsics' in this loader corresponds to 'images'
+        write code from
+        https://github.com/colmap/colmap/blob/8e7093d22b324ce71c70d368d852f0ad91743808/scripts/python/read_write_model.py#L336C1-L354C60
+    """
+    with open(path_to_output_file, "wb") as fid:
+        write_next_bytes(fid, len(images), "Q")
+        for _, img in images.items():
+            write_next_bytes(fid, img.id, "i")
+            write_next_bytes(fid, img.qvec.tolist(), "dddd")
+            write_next_bytes(fid, img.tvec.tolist(), "ddd")
+            write_next_bytes(fid, img.camera_id, "i")
+            for char in img.name:
+                write_next_bytes(fid, char.encode("utf-8"), "c")
+            write_next_bytes(fid, b"\x00", "c")
+            write_next_bytes(fid, len(img.point3D_ids), "Q")
+            for xy, p3d_id in zip(img.xys, img.point3D_ids):
+                write_next_bytes(fid, [*xy, p3d_id], "ddq")
+
 
 
 def read_colmap_bin_array(path):
