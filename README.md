@@ -13,5 +13,6 @@
 <p>results of 3D gaussian</p>
 </center>
 
+# init from single depth image
 
-
+init_sparse_pcd.py 读取rgb和depth图像, 生成points3D.bin文件, 用于取代colmap的生成结果, 进行后续的训练。
