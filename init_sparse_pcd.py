@@ -48,29 +48,34 @@ def init_frame_pcd(depth, rgb, intrinsics, mask=None):
     return pcd, positions, colors, normals
 
 if __name__ == "__main__":
+    # settings
     rgb_path = "/data4/cxx/dataset/desk_3/color/00001.png"
     depth_path = "/data4/cxx/dataset/desk_3/depth/00001.png"
     mask = None
     bin_save_path = "/data4/cxx/dataset/desk_3/gs_input/train_single/sparse/0/points3D.bin"
     ply_save_path = "/data4/cxx/dataset/desk_3/gs_input/train_single/sparse/0/points3D.ply"
+    K = [390.029, 390.029, 320.854, 241.826]  # fx, fy, cx, cy
     
     depth = load_depth(depth_path)
     depth = depth.astype(np.uint16)
     rgb = cv2.imread(rgb_path)[:, :, :3]
     rgb = rgb[:, :, ::-1]
     
-    K = [390.029, 390.029, 320.854, 241.826]
-    pcd, positions, colors, normals = init_frame_pcd(depth, rgb, K, mask)
-    # bin
+    # test read_points3D_binary
     bin_path = "/data4/cxx/dataset/desk_3/gs_input/train/sparse/0/points3D.bin"
     xyz, rgb, _ = read_points3D_binary(bin_path)
+    
+    # generate pcd
+    pcd, positions, colors, normals = init_frame_pcd(depth, rgb, K, mask)
+    
+    # generate .bin file
     write_points3D_binary(pcd, bin_save_path)
     try:
-        
         print("save pointcloud to {}".format(bin_save_path))
     except:
         print("save pointcloud to {} failed!".format(bin_save_path))
-    # ply
+    
+    # generate .ply file
     try:
         storePly(ply_save_path, positions, colors)
         print("save pointcloud to {}".format(ply_save_path))

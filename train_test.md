@@ -1,9 +1,17 @@
-训练图像194
-初始点云5.4k 
-7k iter 5min
-30k iter 30min
+
+# gaussian splatting代码测试+解读
+
+测试输入:
+
+    训练图像194
+    初始点云5.4k 
+测试结果(粗略的计时, 因为这其中包含了加载和保存文件的时间):
+    
+    7k-iter 5min
+    30k-iter 30min
 
 测试训练结果
+
 ~~~bash 
 ./SIBR_viewers/install/bin/SIBR_gaussianViewer_app -m /home/lab/gs/output/bicycle/ -path /home/lab/gs/360_v2/bicycle
 ~~~
@@ -33,8 +41,9 @@ Training progress: 100%|██████████████████�
 Training complete. [06/12 19:32:19]
 ~~~
 
-有这么一个函数用于将一组point3D写入bin文件，
+/scene/colmap_loader.cpp 中有函数write_points3D_binary用于将一组三维点云(point3D)写入.bin文件中
 
+~~~bash
 def write_points3D_binary(points3D, path_to_model_file):
     """
     see: src/colmap/scene/reconstruction.cc
@@ -52,8 +61,11 @@ def write_points3D_binary(points3D, path_to_model_file):
             write_next_bytes(fid, track_length, "Q")
             for image_id, point2D_id in zip(pt.image_ids, pt.point2D_idxs):
                 write_next_bytes(fid, [image_id, point2D_id], "ii")， 
+~~~
 
 另一个函数用来读取bin文件：
+
+~~~bash
 def read_points3D_binary(path_to_model_file):
     """
     see: src/base/reconstruction.cc
@@ -84,4 +96,10 @@ def read_points3D_binary(path_to_model_file):
             rgbs[p_id] = rgb
             errors[p_id] = error
     return xyzs, rgbs, errors 
-可以发现，bin文件在读取后仅使用了xyz,rgb,error这三个属性，所以现在有一个(n,3)的点云坐标xyz，(n,3)的颜色rgbs，(n,1)的errors，其中errors的值全部为0. 如何创建一组points3D，填充其他属性，使其可以使用write_points3D_binary写入为一个bin文件，同时还能够被read_points3D_binary读取
+~~~
+
+观察这两个函数可以发现，在读取.bin文件后,仅使用了其中的xyz,rgb,error这三个属性。所以如果自定义三维点云来替换colmap的生成结果, 需要有：
+    1.(n,3)的点云坐标xyz，
+    2.(n,3)的颜色rgbs，
+    3.(n,1)的errors，其中errors的值全部为0. 
+创建一组points3D，填充其属性，使其可以使用write_points3D_binary写入为一个bin文件，同时还能够被read_points3D_binary读取。

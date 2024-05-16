@@ -21,7 +21,7 @@ class ParamGroup:
         group = parser.add_argument_group(name)
         for key, value in vars(self).items():
             shorthand = False
-            # 对于下划线开头的参数，去掉下划线, 并且设置shorthand为True, 为其添加与首字母相同的短参数
+            # 对于下划线开头的参数，去掉下划线, 并且设置shorthand为True, 此时为其添加与参数名首字母相同的短参数
             if key.startswith("_"):
                 shorthand = True
                 key = key[1:]

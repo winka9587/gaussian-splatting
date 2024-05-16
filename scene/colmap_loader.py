@@ -221,11 +221,11 @@ def read_extrinsics_binary(path_to_model_file):
     """
     images = {}
     with open(path_to_model_file, "rb") as fid:
-        num_reg_images = read_next_bytes(fid, 8, "Q")[0]
+        num_reg_images = read_next_bytes(fid, 8, "Q")[0]  # 获取图片数量以控制循环
         for _ in range(num_reg_images):
             binary_image_properties = read_next_bytes(
                 fid, num_bytes=64, format_char_sequence="idddddddi")
-            image_id = binary_image_properties[0]
+            image_id = binary_image_properties[0]  # 
             qvec = np.array(binary_image_properties[1:5])
             tvec = np.array(binary_image_properties[5:8])
             camera_id = binary_image_properties[8]
