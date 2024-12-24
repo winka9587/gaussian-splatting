@@ -77,7 +77,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         if iteration % 1000 == 0:
             gaussians.oneupSHdegree()
 
-        # Pick a random Camera
+        # Pick a random Camera 选取随机的训练cameras
         if not viewpoint_stack:
             viewpoint_stack = scene.getTrainCameras().copy()
         viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack)-1))
@@ -101,8 +101,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
         with torch.no_grad():
             # Progress bar
+            # 监控loss的下降趋势
             ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
             if iteration % 10 == 0:
+                # 每10次迭代更新一次进度条
                 progress_bar.set_postfix({"Loss": f"{ema_loss_for_log:.{7}f}"})
                 progress_bar.update(10)
             if iteration == opt.iterations:
@@ -115,10 +117,12 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 scene.save(iteration)
 
             # Densification
+            # 细化和密集化, 在图像中跟踪并更新gs model中的最大半径值
             if iteration < opt.densify_until_iter:
                 # Keep track of max radii in image-space for pruning
+                # 将gs模型中和这一次渲染返回的半径radii比较, 更新gs模型中的最大半径
                 gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)  # visibility_filter控制着哪些点需要更新
 
                 if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
                     size_threshold = 20 if iteration > opt.opacity_reset_interval else None

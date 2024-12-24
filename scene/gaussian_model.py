@@ -123,7 +123,7 @@ class GaussianModel:
 
     def create_from_pcd(self, pcd : BasicPointCloud, spatial_lr_scale : float):
         self.spatial_lr_scale = spatial_lr_scale  # 1.1的max_dist
-        fused_point_cloud = torch.tensor(np.asarray(pcd.points)).float().cuda()
+        fused_point_cloud = torch.tensor(np.asarray(pcd.points)).float().cuda()  # tensor+device
          # convert color from RGB to SH
         fused_color = RGB2SH(torch.tensor(np.asarray(pcd.colors)).float().cuda()) 
         features = torch.zeros((fused_color.shape[0], 3, (self.max_sh_degree + 1) ** 2)).float().cuda()  # (n, 3, (sh+1)**2)
@@ -148,9 +148,9 @@ class GaussianModel:
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
 
     def training_setup(self, training_args):
-        self.percent_dense = training_args.percent_dense
-        self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
-        self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
+        self.percent_dense = training_args.percent_dense  # 百分比密度, 初始为0.01
+        self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")  # 各个点累计的梯度
+        self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")  # 各个点的分母
 
         l = [
             {'params': [self._xyz], 'lr': training_args.position_lr_init * self.spatial_lr_scale, "name": "xyz"},
@@ -161,7 +161,7 @@ class GaussianModel:
             {'params': [self._rotation], 'lr': training_args.rotation_lr, "name": "rotation"}
         ]
 
-        self.optimizer = torch.optim.Adam(l, lr=0.0, eps=1e-15)
+        self.optimizer = torch.optim.Adam(l, lr=0.0, eps=1e-15)  # 学习率设置为0, 此时第一个参数l中的内容不会改变, 但是学习率在之后会更新
         self.xyz_scheduler_args = get_expon_lr_func(lr_init=training_args.position_lr_init*self.spatial_lr_scale,
                                                     lr_final=training_args.position_lr_final*self.spatial_lr_scale,
                                                     lr_delay_mult=training_args.position_lr_delay_mult,
@@ -404,5 +404,6 @@ class GaussianModel:
         torch.cuda.empty_cache()
 
     def add_densification_stats(self, viewspace_point_tensor, update_filter):
+        # viewspace_point_tensor来自screenspace_points, 是光栅化之前创建的2D点
         self.xyz_gradient_accum[update_filter] += torch.norm(viewspace_point_tensor.grad[update_filter,:2], dim=-1, keepdim=True)
-        self.denom[update_filter] += 1
+        self.denom[update_filter] += 1  # 分母计数+1
