@@ -1,3 +1,7 @@
+# about
+
+该分支的目标是 使用其他接口输出的RGB, intrinsics&extrinsics, Pointcloud(ply) 生成3dgs模型, 并在指定view下渲染。
+
 # 3D Gaussian Splatting for Real-Time Radiance Field Rendering
 <a href="README_origin.md"><img src="assets/teaser.png"> </a>
 
