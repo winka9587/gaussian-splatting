@@ -17,6 +17,7 @@ from scene.cameras import MiniCam
 
 host = "127.0.0.1"
 port = 6009
+port2 = 7009
 
 conn = None
 addr = None
@@ -27,10 +28,16 @@ def init(wish_host, wish_port):
     global host, port, listener
     host = wish_host
     port = wish_port
-    listener.bind((host, port))
-    listener.listen()
-    listener.settimeout(0)
-
+    try:
+        listener.bind((host, port))
+        listener.listen()
+        listener.settimeout(0)
+    except Exception:
+        # multi debug process
+        listener.bind((host, port2))
+        listener.listen()
+        listener.settimeout(0)
+    
 def try_connect():
     global conn, addr, listener
     try:

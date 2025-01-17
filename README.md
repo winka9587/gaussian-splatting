@@ -20,3 +20,14 @@
 # init from single depth image
 
 init_sparse_pcd.py 读取rgb和depth图像, 生成points3D.bin文件, 用于取代colmap的生成结果, 进行后续的训练。
+
+
+# init_gs
+
+读取colmap格式输出目录(参考HOGS_mast3r使用稀疏图像输出初始重建结果), 直接进行3dgs训练
+
+~~~
+python init_gs.py 
+-s /path/to/colmap_format/  # sparse/0/point3D.bin&images.bin&cameras.bin file structure in this path 
+-m /path/to/save_output/
+~~~

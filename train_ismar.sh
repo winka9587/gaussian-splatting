@@ -1,4 +1,4 @@
-conda activate gaussian_splatting
+conda activate 3dgs
 export PATH=/usr/local/cuda-11.6/bin:$PATH
 nvcc -V
 cd /data4/cxx/workplace/gs/gaussian-splatting

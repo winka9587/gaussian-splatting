@@ -227,8 +227,8 @@ def readColmapSceneInfo(path, images, depths, eval, train_test_exp, llffhold=8):
                            train_cameras=train_cam_infos,  # cam_info
                            test_cameras=test_cam_infos,  # []
                            nerf_normalization=nerf_normalization,  # translate(centuralize), radius(max dist*1.1)
-                           ply_path=ply_path) # path
-                        #    is_nerf_synthetic=False)  
+                           ply_path=ply_path, # path
+                           is_nerf_synthetic=False)  
     return scene_info
 
 def readCamerasFromTransforms(path, transformsfile, depths_folder, white_background, is_test, extension=".png"):

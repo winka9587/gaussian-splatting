@@ -47,6 +47,46 @@ def init_frame_pcd(depth, rgb, intrinsics, mask=None):
     }
     return pcd, positions, colors, normals
 
+
+def init_Point3d_from_pcd(pts3d, color, mask=None):
+    """
+        input:
+            depth: (w, h)
+            rgb: (w, h, 3)
+            intrinsics: [fx, fy, cx, cy]
+        return:
+            BasicPointCloud
+    """
+    positions = pts3d[mask]
+    colors = color[mask]
+    
+    # 检查colors是否为0~255的, 如果是0~1的, 则乘以255, 并转为int
+    if colors.max() <= 1:
+        colors = (colors * 255).astype(np.uint8)
+    #################################################################    
+    
+    normals = np.zeros_like(positions)
+    print("positions.shape: ", positions.shape)
+    print("colors.shape: ", colors.shape)
+    print("normals.shape: ", normals.shape)
+    # pcd = BasicPointCloud(points=positions, colors=colors, normals=normals)
+    
+    Point3D = collections.namedtuple(
+        "Point3D", ["id", "xyz", "rgb", "error", "image_ids", "point2D_idxs"]
+    )
+    pt_n = positions.shape[0]
+    # error = np.zeros((positions.shape[0], 1), dtype=np.float32)
+    errors = np.zeros(pt_n)  # 所有点的误差为0
+    # 创建一个空的或者填充0的image_ids和point2D_idxs
+    image_ids = np.zeros(0, dtype=np.uint32)
+    point2D_idxs = np.zeros(0, dtype=np.uint32)
+
+    # 创建Point3D对象
+    pcd = {
+        i: Point3D(i, positions[i], colors[i], errors[i], image_ids, point2D_idxs) for i in range(pt_n)
+    }
+    return pcd, positions, colors, normals
+
 if __name__ == "__main__":
     # settings
     rgb_path = "/data4/cxx/dataset/desk_3/color/00001.png"

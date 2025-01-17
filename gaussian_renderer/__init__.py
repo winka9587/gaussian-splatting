@@ -15,6 +15,27 @@ from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianR
 from scene.gaussian_model import GaussianModel
 from utils.sh_utils import eval_sh
 
+import torch
+
+# def check_same_device(*args):
+#     """
+#     检查输入的所有张量是否都在同一设备上。
+    
+#     参数:
+#         *args: 任意数量的张量或其他对象（忽略非张量）。
+    
+#     返回:
+#         True: 如果所有张量在同一设备上，或者所有张量为 None。
+#         False: 如果设备不一致。
+#         如果不一致，会打印出不同的设备集合。
+#     """
+#     devices = set(arg.device for arg in args if arg is not None and isinstance(arg, torch.Tensor))
+#     if len(devices) > 1:
+#         print(f"设备不一致，发现以下设备: {devices}")
+#         return False
+#     return True
+
+
 def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, scaling_modifier = 1.0, separate_sh = False, override_color = None, use_trained_exp=False):
     """
     Render the scene. 
@@ -45,7 +66,8 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
         sh_degree=pc.active_sh_degree,
         campos=viewpoint_camera.camera_center,
         prefiltered=False,
-        debug=pipe.debug,
+        # debug=pipe.debug,
+        debug=True,
         antialiasing=pipe.antialiasing
     )
 
@@ -88,6 +110,10 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen). 
     if separate_sh:
+        
+        # all_same_device = check_same_device(means3D, means2D, dc, shs, colors_precomp, opacity)
+        # print(f"所有张量是否在同一设备上: {all_same_device}")
+        
         rendered_image, radii, depth_image = rasterizer(
             means3D = means3D,
             means2D = means2D,

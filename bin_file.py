@@ -10,8 +10,10 @@ from scene.dataset_readers import sceneLoadTypeCallbacks
 def load_files():
     source_path = "/data4/cxx/dataset/gs/ismar/"
     images = "images"
+    depths = ""
     eval = False
-    scene_info = sceneLoadTypeCallbacks["Colmap"](source_path, images, eval)
+    train_test_exp = False
+    scene_info = sceneLoadTypeCallbacks["Colmap"](source_path, images, depths, eval, train_test_exp)
     print(scene_info)
 
 
