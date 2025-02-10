@@ -20,7 +20,8 @@ class Camera(nn.Module):
     def __init__(self, resolution, colmap_id, R, T, FoVx, FoVy, depth_params, image, invdepthmap,
                  image_name, uid,
                  trans=np.array([0.0, 0.0, 0.0]), scale=1.0, data_device = "cuda",
-                 train_test_exp = False, is_test_dataset = False, is_test_view = False
+                 train_test_exp = False, is_test_dataset = False, is_test_view = False,
+                 mask=None
                  ):
         super(Camera, self).__init__()
 
@@ -54,6 +55,11 @@ class Camera(nn.Module):
                 self.alpha_mask[..., self.alpha_mask.shape[-1] // 2:] = 0
 
         self.original_image = gt_image.clamp(0.0, 1.0).to(self.data_device)
+        # add mask
+        resized_mask = PILtoTorch(mask, resolution)
+        gt_mask = resized_mask[:1, ...]
+        gt_mask[gt_mask > 0] = 1
+        self.gt_mask = gt_mask
         self.image_width = self.original_image.shape[2]
         self.image_height = self.original_image.shape[1]
 

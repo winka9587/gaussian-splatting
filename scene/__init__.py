@@ -45,12 +45,13 @@ class Scene:
 
         # 读取colmap的SfM结果或者blender渲染的nerf合成数据, 获取scene_info
         if os.path.exists(os.path.join(args.source_path, "sparse")):
-            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.depths, args.eval, args.train_test_exp)
+            if args.mast3r_output: # new add, mast3r output
+                scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.depths, args.eval, args.train_test_exp, mask=True)
+            else:
+                scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.depths, args.eval, args.train_test_exp)
         elif os.path.exists(os.path.join(args.source_path, "transforms_train.json")):
             print("Found transforms_train.json file, assuming Blender data set!")
             scene_info = sceneLoadTypeCallbacks["Blender"](args.source_path, args.white_background, args.depths, args.eval)
-        elif os.path.exists(os.path.join(args.source_path, "points3D.ply")): # new add, mast3r output
-            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.depths, args.eval, args.train_test_exp)
         else:
             assert False, "Could not recognize scene type!"
         # 没有加载过的iter, 复制点云
