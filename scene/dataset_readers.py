@@ -26,8 +26,8 @@ from scene.gaussian_model import BasicPointCloud
 
 class CameraInfo(NamedTuple):
     uid: int
-    R: np.array
-    T: np.array
+    R: np.array  # c2w
+    T: np.array  # w2c
     FovY: np.array
     FovX: np.array
     depth_params: dict
@@ -38,6 +38,7 @@ class CameraInfo(NamedTuple):
     height: int
     is_test: bool
     mask_path: str
+    K: np.array
 
 class SceneInfo(NamedTuple):
     point_cloud: BasicPointCloud
@@ -63,9 +64,9 @@ def getNerfppNorm(cam_info):
     cam_centers = []
 
     for cam in cam_info:
-        W2C = getWorld2View2(cam.R, cam.T)
+        W2C = getWorld2View2(cam.R, cam.T)  # input R(c2w), T(w2c), output w2c matrix
         C2W = np.linalg.inv(W2C)
-        cam_centers.append(C2W[:3, 3:4])
+        cam_centers.append(C2W[:3, 3:4])  # get cam_center
 
     center, diagonal = get_center_and_diag(cam_centers)
     radius = diagonal * 1.1
@@ -83,14 +84,18 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, depths_params, images_fold
         sys.stdout.write("Reading camera {}/{}".format(idx+1, len(cam_extrinsics)))
         sys.stdout.flush()
 
-        extr = cam_extrinsics[key]
+        extr = cam_extrinsics[key]  # w2c
         intr = cam_intrinsics[extr.camera_id]
         height = intr.height
         width = intr.width
+        
+        # intr.params *= 3.75
+        # height = int(cam_intrinsics[extr.camera_id].height*3.75)
+        # width = int(cam_intrinsics[extr.camera_id].width*3.75)
 
         uid = intr.id
-        R = np.transpose(qvec2rotmat(extr.qvec))
-        T = np.array(extr.tvec)
+        R = np.transpose(qvec2rotmat(extr.qvec))  # c2w
+        T = np.array(extr.tvec)  # w2c
 
         if intr.model=="SIMPLE_PINHOLE":
             focal_length_x = intr.params[0]
@@ -99,8 +104,17 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, depths_params, images_fold
         elif intr.model=="PINHOLE":
             focal_length_x = intr.params[0]
             focal_length_y = intr.params[1]
-            FovY = focal2fov(focal_length_y, height)
+            # focal_length_x = intr.params[0]*3.75
+            # focal_length_y = intr.params[1]*3.75
+            FovY = focal2fov(focal_length_y, height)  # origin 3dgs
             FovX = focal2fov(focal_length_x, width)
+            
+            # FovX = 2 * np.arctan(width / (2 * focal_length_x))  # test new fov calculate
+            # FovY = 2 * np.arctan(height / (2 * focal_length_y))
+            
+            
+            # FovY = focal2fov(focal_length_y, intr.params[3]*2)  # use cx, cy to calculate fov
+            # FovX = focal2fov(focal_length_x, intr.params[2]*2)
         else:
             assert False, "Colmap camera model not handled: only undistorted datasets (PINHOLE or SIMPLE_PINHOLE cameras) supported!"
 
@@ -119,7 +133,8 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, depths_params, images_fold
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, depth_params=depth_params,
                               image_path=image_path, image_name=image_name, depth_path=depth_path,
                               width=width, height=height, is_test=image_name in test_cam_names_list,
-                              mask_path=image_path.replace("rgb", "mask") if mask else "")
+                              mask_path=image_path.replace("images", "masks") if mask else "",
+                              K=intr.params)
         cam_infos.append(cam_info)
 
     sys.stdout.write('\n')

@@ -12,6 +12,9 @@
 import numpy as np
 import collections
 import struct
+from PIL import Image as PIL_Image
+import torch
+import os
 
 CameraModel = collections.namedtuple(
     "CameraModel", ["model_id", "model_name", "num_params"])
@@ -143,7 +146,6 @@ def read_points3D_binary(path_to_model_file):
             xyz = np.array(binary_point_line_properties[1:4])
             rgb = np.array(binary_point_line_properties[4:7])
             error = np.array(binary_point_line_properties[7])
-            # colmap的points3D中image_ids和point2D_idxs分别代表什么?
             track_length = read_next_bytes(
                 fid, num_bytes=8, format_char_sequence="Q")[0]  # "image_ids", 
             track_elems = read_next_bytes(
@@ -367,3 +369,22 @@ def read_colmap_bin_array(path):
         array = np.fromfile(fid, np.float32)
     array = array.reshape((width, height, channels), order="F")
     return np.transpose(array, (1, 0, 2)).squeeze()
+
+def save_image(image_array, path):
+    """
+    Save an image array to a file.
+    
+    :param image_array: numpy array or torch tensor representing the image.
+    :param path: path to save the image file.
+    """
+    if isinstance(image_array, torch.Tensor):
+        image_array = image_array.cpu().numpy()
+    # Check if image array is in range 0-1, if so, scale to 0-255
+    if image_array.max() <= 1.0:
+        image_array = (image_array * 255).astype(np.uint8)
+    else:
+        image_array = image_array.astype(np.uint8)
+    image = PIL_Image.fromarray(image_array)
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    image.save(path)

@@ -53,6 +53,10 @@ def loadCam(args, id, cam_info, resolution_scale, is_nerf_synthetic, is_test_dat
                 global_down = orig_w / 1600
             else:
                 global_down = 1
+        elif args.resolution == -2:  # custom test @debug
+            scale = 3.75
+            resolution = round(orig_w/(resolution_scale * args.resolution)), round(orig_h/(resolution_scale * args.resolution))
+            global_down = 1
         else:
             global_down = orig_w / args.resolution
     
@@ -71,7 +75,7 @@ def loadCam(args, id, cam_info, resolution_scale, is_nerf_synthetic, is_test_dat
                   image=image, invdepthmap=invdepthmap,
                   image_name=cam_info.image_name, uid=id, data_device=args.data_device,
                   train_test_exp=args.train_test_exp, is_test_dataset=is_test_dataset, is_test_view=cam_info.is_test,
-                  mask=mask)
+                  mask=mask, K=cam_info.K, width=orig_w, height=orig_h)
 
 def cameraList_from_camInfos(cam_infos, resolution_scale, args, is_nerf_synthetic, is_test_dataset):
     camera_list = []

@@ -12,7 +12,7 @@
 import torch
 from torch import nn
 import numpy as np
-from utils.graphics_utils import getWorld2View2, getProjectionMatrix
+from utils.graphics_utils import getWorld2View2, getProjectionMatrix, build_offaxis_projection_matrix_p6
 from utils.general_utils import PILtoTorch
 import cv2
 
@@ -21,17 +21,20 @@ class Camera(nn.Module):
                  image_name, uid,
                  trans=np.array([0.0, 0.0, 0.0]), scale=1.0, data_device = "cuda",
                  train_test_exp = False, is_test_dataset = False, is_test_view = False,
-                 mask=None
+                 mask=None, K=None, width=None, height=None
                  ):
         super(Camera, self).__init__()
 
         self.uid = uid
         self.colmap_id = colmap_id
-        self.R = R
-        self.T = T
+        self.R = R  # c2w
+        self.T = T  # w2c
         self.FoVx = FoVx
         self.FoVy = FoVy
         self.image_name = image_name
+        self.K = K
+        self.width = width
+        self.height = height
 
         try:
             self.data_device = torch.device(data_device)
@@ -55,11 +58,13 @@ class Camera(nn.Module):
                 self.alpha_mask[..., self.alpha_mask.shape[-1] // 2:] = 0
 
         self.original_image = gt_image.clamp(0.0, 1.0).to(self.data_device)
+        
         # add mask
-        resized_mask = PILtoTorch(mask, resolution)
-        gt_mask = resized_mask[:1, ...]
-        gt_mask[gt_mask > 0] = 1
-        self.gt_mask = gt_mask
+        if mask is not None:
+            resized_mask = PILtoTorch(mask, resolution)
+            gt_mask = resized_mask[:1, ...]
+            gt_mask[gt_mask > 0] = 1
+            self.gt_mask = gt_mask
         self.image_width = self.original_image.shape[2]
         self.image_height = self.original_image.shape[1]
 
@@ -89,10 +94,20 @@ class Camera(nn.Module):
         self.trans = trans
         self.scale = scale
 
-        self.world_view_transform = torch.tensor(getWorld2View2(R, T, trans, scale)).transpose(0, 1).cuda()
-        self.projection_matrix = getProjectionMatrix(znear=self.znear, zfar=self.zfar, fovX=self.FoVx, fovY=self.FoVy).transpose(0,1).cuda()
+        # getWorld2View2(R, T, trans, scale) -> [R_w2c, t_w2c]
+        # inverse() -> [R_c2w, t_c2w]
+        # T_w2c = torch.tensor(getWorld2View2(R, T, trans, scale)).inverse().cuda()  # [R_c2w, t_c2w]
+        # t_c2w = torch.tensor(getWorld2View2(R.T, T, trans, scale)).inverse()[:3, 3].numpy()
+        self.world_view_transform = torch.tensor(getWorld2View2(R, T, trans, scale)).transpose(0, 1).cuda()  # origin [R_w2c, t_w2c].T
+        # self.projection_matrix = getProjectionMatrix(znear=self.znear, zfar=self.zfar, fovX=self.FoVx, fovY=self.FoVy, cx=self.K[2], cy=self.K[3], W=self.width, H=self.height).transpose(0,1).cuda()  # FoV -> projection matrix
+        self.projection_matrix = torch.from_numpy(build_offaxis_projection_matrix_p6(fx=self.K[0], fy=self.K[1], cx=self.K[2], cy=self.K[3], W=self.width, H=self.height, znear=self.znear, zfar=self.zfar)).cuda()
         self.full_proj_transform = (self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
-        self.camera_center = self.world_view_transform.inverse()[3, :3]
+        # self.full_proj_transform = (self.projection_matrix @ self.world_view_transform)  # test
+
+        self.camera_center = self.world_view_transform.inverse()[3, :3]  # origin
+
+        # self.camera_center = self.world_view_transform.inverse()[3, :3]  # test, not inv
+        # self.camera_center = self.world_view_transform.inverse()[3, :3].zero_()
         
 class MiniCam:
     def __init__(self, width, height, fovy, fovx, znear, zfar, world_view_transform, full_proj_transform):
