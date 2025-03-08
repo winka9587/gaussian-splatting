@@ -8,4 +8,5 @@ tensorboard_3d
 screenshots
 datasets
 evaluation
-data
+data*
+__pycache__/
