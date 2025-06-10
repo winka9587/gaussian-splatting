@@ -10,3 +10,5 @@ datasets
 evaluation
 data*
 __pycache__/
+
+build/
